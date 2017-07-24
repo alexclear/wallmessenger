@@ -3,20 +3,38 @@
 #include <unistd.h>
 #include <yaml.h>
 #include <string.h>
+#include <stdarg.h>
 /*
 //#define TRUE FALSE // Счастливой отладки!
 */
 
 #define PORT_NUMBER "port_number"
 #define USER_NAME "user_name"
+#define LOGGING_ENABLED "logging_enabled"
+#define LOG_FILE_PATH "log_file_path"
+#define LOGGING_YES "Yes"
+#define TRUE 1
+#define FALSE 0
 
-typedef struct {
-    char* user_name;
-    char* port_number;
-    char* config_path;
-} config_t;
+#include "typedefs.h"
 
 config_t config;
+
+void log(char *fmt, ...) {
+    FILE *log = fopen(config.log_file_path, "a");
+    if(log == NULL) {
+        perror("Can't open the log file");
+        exit(EXIT_FAILURE);
+    }
+    va_list args;
+    va_start( args, fmt );
+    vfprintf( log, fmt, args );
+    va_end( args );
+    va_start( args, fmt );
+    vfprintf( stderr, fmt, args );
+    va_end( args );
+    close( log );
+}
 
 int main(int argc, char* argv[]) {
     //int i=0;
@@ -68,8 +86,7 @@ int main(int argc, char* argv[]) {
     yaml_event_t event;
 
     int done=0;
-    int nextval_port_number=0;
-    int nextval_user_name=0;
+    parser_state_t state=PARSING;
 
     /* Read the event sequence. */
     while (!done) {
@@ -83,23 +100,46 @@ int main(int argc, char* argv[]) {
         if(event.type == YAML_SCALAR_EVENT) {
             if(event.data.scalar.value != NULL) {
                 fprintf(stderr, "value: %s\n", event.data.scalar.value);
-                if(nextval_port_number == 1) {
+                if(state == NEXT_PORT_NUM) {
                     config.port_number = malloc(event.data.scalar.length + 1);
                     strncpy(config.port_number, event.data.scalar.value, event.data.scalar.length);
                     config.port_number[event.data.scalar.length] = NULL;
-                    nextval_port_number = 0;
+                    state = PARSING;
                 }
                 if(strncmp(PORT_NUMBER, event.data.scalar.value, event.data.scalar.length) == 0) {
-                    nextval_port_number = 1;
+                    state = NEXT_PORT_NUM;
                 }
-                if(nextval_user_name == 1) {
+                if(state == NEXT_USER_NAME) {
                     config.user_name = malloc(event.data.scalar.length + 1);
                     strncpy(config.user_name, event.data.scalar.value, event.data.scalar.length);
                     config.user_name[event.data.scalar.length] = NULL;
-                    nextval_user_name = 0;
+                    state = PARSING;
                 }
                 if(strncmp(USER_NAME, event.data.scalar.value, event.data.scalar.length) == 0) {
-                    nextval_user_name = 1;
+                    state = NEXT_USER_NAME;
+                }
+                if(state == NEXT_LOG_FILE) {
+                    config.log_file_path = malloc(event.data.scalar.length + 1);
+                    strncpy(config.log_file_path, event.data.scalar.value, event.data.scalar.length);
+                    config.log_file_path[event.data.scalar.length] = NULL;
+                    state = PARSING;
+                }
+                if(strncmp(LOG_FILE_PATH, event.data.scalar.value, event.data.scalar.length) == 0) {
+                    state = NEXT_LOG_FILE;
+                }
+                if(state == NEXT_LOGGING_EN) {
+                    char* tempstring = malloc(event.data.scalar.length + 1);
+                    strncpy(tempstring, event.data.scalar.value, event.data.scalar.length);
+                    tempstring[event.data.scalar.length] = NULL;
+                    config.logging_enabled = FALSE;
+                    if(strcmp(tempstring, LOGGING_YES) == 0) {
+                        config.logging_enabled = TRUE;
+                    }
+                    free(tempstring);
+                    state = PARSING;
+                }
+                if(strncmp(LOGGING_ENABLED, event.data.scalar.value, event.data.scalar.length) == 0) {
+                    state = NEXT_LOGGING_EN;
                 }
             }
         } 
@@ -120,8 +160,10 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    fprintf(stderr, "Port number: %s\n", config.port_number);
-    fprintf(stderr, "User name: %s\n", config.user_name);
+    log("Port number: %s\n", config.port_number);
+    log("User name: %s\n", config.user_name);
+    log("Log file path: %s\n", config.log_file_path);
+    log("Logging enabled: %d\n", config.logging_enabled);
 
     exit(EXIT_SUCCESS);
 }
