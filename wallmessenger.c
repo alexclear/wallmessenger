@@ -19,18 +19,29 @@ extern int config_parser();
 extern int do_processing_loop_single();
 extern int do_processing_loop_multiple_threads();
 
+int conf_pipe[2];
+
 void sighup_handler(int signum) {
     fprintf(stderr, "In a handler\n");
     // Перечитать конфигурационный файл
     reread_config = TRUE;
+    int i = write(conf_pipe[1], 'a', 1);
+    if(i == -1) {
+        perror("Write failed");
+    }
+    fprintf(stderr, "Leaving the handler: %d, conf_pipe[1]: %d\n", i, conf_pipe[1]);
 }
 
 void* config_reader(void* context) {
+    int readfd = *((int*) context);
+    mylog("readfd: %d\n", readfd);
     if(parse_config() != 0) {
         exit(EXIT_FAILURE);
     }
     for(;;) {
-        sleep(1);
+        char buf;
+        read(readfd, &buf, 1);
+        mylog("Read from readfd!\n");
         if(reread_config == TRUE) {
             if(parse_config() != 0) {
                 mylog("Parsing failed!\n");
@@ -77,7 +88,9 @@ int main(int argc, char* argv[]) {
     }
 
     pthread_t thread_id;
-    int result = pthread_create(&thread_id, NULL, config_reader, NULL);
+    pipe(conf_pipe);
+    mylog("conf_pipe[0]: %d, conf_pipe[1]: %d\n", conf_pipe[0], conf_pipe[1]);
+    int result = pthread_create(&thread_id, NULL, config_reader, &(conf_pipe[0]));
     if( result < 0) {
         errno = result;
         perror("pthread_create failed");
