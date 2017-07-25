@@ -10,7 +10,8 @@
 config_t config;
 
 extern int config_parser();
-extern int do_processing_loop();
+extern int do_processing_loop_single();
+extern int do_processing_loop_multiple_threads();
 
 int main(int argc, char* argv[]) {
     int c;
@@ -46,7 +47,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if(do_processing_loop() != 0) {
+    if(do_processing_loop_multiple_threads() != 0) {
         exit(EXIT_FAILURE);
     }
 
