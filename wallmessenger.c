@@ -10,6 +10,7 @@
 config_t config;
 
 extern int config_parser();
+extern int do_processing_loop();
 
 int main(int argc, char* argv[]) {
     int c;
@@ -42,6 +43,10 @@ int main(int argc, char* argv[]) {
     }
 
     if(parse_config() != 0) {
+        exit(EXIT_FAILURE);
+    }
+
+    if(do_processing_loop() != 0) {
         exit(EXIT_FAILURE);
     }
 
