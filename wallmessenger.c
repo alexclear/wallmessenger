@@ -4,14 +4,43 @@
 #include <yaml.h>
 #include <string.h>
 #include <stdarg.h>
+#include <signal.h>
+#include <errno.h>
 
 #include "typedefs.h"
 
+#define TRUE 1
+#define FALSE 0
+
 config_t config;
+unsigned reread_config = FALSE;
 
 extern int config_parser();
 extern int do_processing_loop_single();
 extern int do_processing_loop_multiple_threads();
+
+void sighup_handler(int signum) {
+    fprintf(stderr, "In a handler\n");
+    // Перечитать конфигурационный файл
+    reread_config = TRUE;
+}
+
+void* config_reader(void* context) {
+    if(parse_config() != 0) {
+        exit(EXIT_FAILURE);
+    }
+    for(;;) {
+        sleep(1);
+        if(reread_config == TRUE) {
+            if(parse_config() != 0) {
+                mylog("Parsing failed!\n");
+            } else {
+                mylog("Config replaced!\n");
+            }
+            reread_config = FALSE;
+        }
+    }
+}
 
 int main(int argc, char* argv[]) {
     int c;
@@ -44,6 +73,28 @@ int main(int argc, char* argv[]) {
     }
 
     if(parse_config() != 0) {
+        exit(EXIT_FAILURE);
+    }
+
+    pthread_t thread_id;
+    int result = pthread_create(&thread_id, NULL, config_reader, NULL);
+    if( result < 0) {
+        errno = result;
+        perror("pthread_create failed");
+        exit(EXIT_FAILURE);
+    }
+
+    struct sigaction sa_hup;
+    sa_hup.sa_handler = &sighup_handler;
+
+    // Restart the system call, if at all possible
+    sa_hup.sa_flags = SA_RESTART;
+
+    // Block every signal during the handler
+    sigfillset(&sa_hup.sa_mask);
+
+    if(sigaction(SIGHUP, &sa_hup, NULL) != 0) {
+        perror("sigaction failed");
         exit(EXIT_FAILURE);
     }
 
