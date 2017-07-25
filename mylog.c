@@ -7,17 +7,19 @@
 extern config_t config;
 
 void mylog(char *fmt, ...) {
-    FILE *log = fopen(config.log_file_path, "a");
-    if(log == NULL) {
-        perror("Can't open the log file");
-        exit(EXIT_FAILURE);
+    if(config.logging_enabled) {
+        FILE *log = fopen(config.log_file_path, "a");
+        if(log == NULL) {
+            perror("Can't open the log file");
+            exit(EXIT_FAILURE);
+        }
+        va_list args;
+        va_start( args, fmt );
+        vfprintf( log, fmt, args );
+        va_end( args );
+        va_start( args, fmt );
+        vfprintf( stderr, fmt, args );
+        va_end( args );
+        fclose( log );
     }
-    va_list args;
-    va_start( args, fmt );
-    vfprintf( log, fmt, args );
-    va_end( args );
-    va_start( args, fmt );
-    vfprintf( stderr, fmt, args );
-    va_end( args );
-    fclose( log );
 }
