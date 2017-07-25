@@ -24,17 +24,19 @@ extern config_t config;
 
 typedef struct {
     int client_fd;
+    pthread_t thread_id;
 } thread_context_t;
 
 void *process_client(void* context) {
     char buff[BUF_LEN];
+    mylog("Creating a thread: %d, id: %d\n", ((thread_context_t*) context)->client_fd, ((thread_context_t*) context)->thread_id);
     for(;;) {
         int result = read(((thread_context_t*) context)->client_fd, buff, BUF_LEN);
         if( result > 0 ) {
             char* tempstr = malloc(result+1);
             strncpy(tempstr, buff, result);
             tempstr[result] = 0;
-            mylog("%d bytes read: %s\n", result, tempstr);
+            mylog("[%d] [%d] %d bytes read: %s\n", ((thread_context_t*) context)->thread_id, ((thread_context_t*) context)->client_fd, result, tempstr);
             free(tempstr);
         } else {
             switch( result ) {
@@ -42,6 +44,7 @@ void *process_client(void* context) {
                 break;
             default:
                 mylog("Error reading: %d\n", result);
+                free(context);
                 return NULL;
             }
             break;
@@ -52,9 +55,11 @@ void *process_client(void* context) {
     if (shutdown(((thread_context_t*) context)->client_fd, SHUT_RDWR) == -1) {
         perror("shutdown failed");
         close(((thread_context_t*) context)->client_fd);
+        free(context);
         return NULL;
     }
     close(((thread_context_t*) context)->client_fd);
+    free(context);
     return NULL;
 }
 
@@ -95,11 +100,10 @@ int do_processing_loop_multiple_threads() {
             return ERR_ACCEPT;
         }
   
-        pthread_t thread;
-        thread_context_t context;
-        context.client_fd = connect_fd;
+        thread_context_t *context = malloc(sizeof(thread_context_t));
+        context->client_fd = connect_fd;
         // Если новое соединение установлено - выделить ему обработчик
-        int result = pthread_create(&thread, NULL, process_client, &context);
+        int result = pthread_create(&(context->thread_id), NULL, process_client, context);
         if( result < 0) {
             errno = result;
             perror("pthread_create failed");
