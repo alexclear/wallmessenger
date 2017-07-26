@@ -6,8 +6,14 @@ typedef enum {
     NEXT_PORT_NUM,
     NEXT_USER_NAME,
     NEXT_LOGGING_EN,
-    NEXT_LOG_FILE
+    NEXT_LOG_FILE,
+    NEXT_SERVER_TYPE
 } parser_state_t;
+
+typedef enum {
+    SYNC,
+    ASYNC
+} server_type_t;
 
 typedef struct {
     char* user_name;
@@ -15,6 +21,7 @@ typedef struct {
     char* config_path;
     char* log_file_path;
     int logging_enabled;
+    server_type_t server_type;
 } config_t;
 
 #endif

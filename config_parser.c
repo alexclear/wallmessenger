@@ -9,7 +9,10 @@
 #define USER_NAME "user_name"
 #define LOGGING_ENABLED "logging_enabled"
 #define LOG_FILE_PATH "log_file_path"
+#define SERVER_TYPE "server_type"
 #define LOGGING_YES "Yes"
+#define SERVER_TYPE_ASYNC "async"
+#define SERVER_TYPE_SYNC "sync"
 #define TRUE 1
 #define FALSE 0
 
@@ -86,6 +89,24 @@ int parse_config() {
                 }
                 if(strncmp(LOGGING_ENABLED, event.data.scalar.value, event.data.scalar.length) == 0) {
                     state = NEXT_LOGGING_EN;
+                }
+                if(state == NEXT_SERVER_TYPE) {
+                    char* tempstring = malloc(event.data.scalar.length + 1);
+                    strncpy(tempstring, event.data.scalar.value, event.data.scalar.length);
+                    tempstring[event.data.scalar.length] = NULL;
+                    if(strcmp(tempstring, SERVER_TYPE_SYNC) == 0) {
+                        config.server_type = SYNC;
+                    } else if(strcmp(tempstring, SERVER_TYPE_ASYNC) == 0) {
+                        config.server_type = ASYNC;
+                    } else {
+                        mylog("Bad server type value\n");
+                        return -4;
+                    }
+                    free(tempstring);
+                    state = PARSING;
+                }
+                if(strncmp(SERVER_TYPE, event.data.scalar.value, event.data.scalar.length) == 0) {
+                    state = NEXT_SERVER_TYPE;
                 }
             }
         } 

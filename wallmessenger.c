@@ -21,6 +21,7 @@ extern int config_parser();
 extern int open_port();
 extern int do_processing_loop_single(int socket_fd);
 extern int do_processing_loop_multiple_threads(int socket_fd);
+extern int do_processing_loop_select(int socket_fd);
 
 int start_in_foreground = FALSE;
 int conf_pipe[2];
@@ -161,8 +162,14 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if(do_processing_loop_multiple_threads(socket_fd) != 0) {
-        exit(EXIT_FAILURE);
+    if(config.server_type == SYNC) {
+        if(do_processing_loop_multiple_threads(socket_fd) != 0) {
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        if(do_processing_loop_select(socket_fd) != 0) {
+            exit(EXIT_FAILURE);
+        }
     }
 
     exit(EXIT_SUCCESS);
