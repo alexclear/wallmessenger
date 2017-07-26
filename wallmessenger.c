@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <pwd.h>
+#include <fcntl.h>
 
 #include "typedefs.h"
 
@@ -21,6 +22,7 @@ extern int open_port();
 extern int do_processing_loop_single(int socket_fd);
 extern int do_processing_loop_multiple_threads(int socket_fd);
 
+int start_in_foreground = FALSE;
 int conf_pipe[2];
 
 void sighup_handler(int signum) {
@@ -59,9 +61,12 @@ void* config_reader(void* context) {
 int main(int argc, char* argv[]) {
     int c;
 
-    while ((c = getopt (argc, argv, "u:p:c:")) != -1)
+    while ((c = getopt (argc, argv, "fu:p:c:")) != -1)
     switch (c)
     {
+    case 'f':
+        start_in_foreground = TRUE;
+        break;
     case 'u':
         config.user_name = optarg;
         break;
@@ -84,6 +89,29 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     default:
         abort ();
+    }
+
+    if(!start_in_foreground) {
+        // Сделать fork
+        pid_t pid = fork();
+        if(pid < 0) {
+            perror("fork failed");
+            exit(EXIT_FAILURE);
+        }
+
+        // Если родитель - выйти
+        if(pid > 0) {
+            exit(EXIT_SUCCESS);
+        } else {
+            // Если потомок - переоткрыть stdin, stdout, sterr в /dev/null и продолжить работу
+            setsid();
+            fclose(stderr);
+            fclose(stdout);
+            fclose(stdin);
+            int fd = open("/dev/null",O_RDWR);
+            dup(fd);
+            dup(fd);
+        }
     }
 
     if(parse_config() != 0) {
