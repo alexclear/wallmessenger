@@ -25,7 +25,8 @@ void sighup_handler(int signum) {
     fprintf(stderr, "In a handler\n");
     // Перечитать конфигурационный файл
     reread_config = TRUE;
-    int i = write(conf_pipe[1], 'a', 1);
+    char flag = 'a';
+    int i = write(conf_pipe[1], &flag, 1);
     if(i == -1) {
         perror("Write failed");
     }
@@ -88,7 +89,10 @@ int main(int argc, char* argv[]) {
     }
 
     pthread_t thread_id;
-    pipe(conf_pipe);
+    if(pipe(conf_pipe) < 0) {
+        perror("pipe() failed");
+        exit(EXIT_FAILURE);
+    }
     mylog("conf_pipe[0]: %d, conf_pipe[1]: %d\n", conf_pipe[0], conf_pipe[1]);
     int result = pthread_create(&thread_id, NULL, config_reader, &(conf_pipe[0]));
     if( result < 0) {
