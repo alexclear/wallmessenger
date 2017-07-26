@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
         // Сделать fork
         pid_t pid = fork();
         if(pid < 0) {
-            perror("fork failed");
+            mylog("fork failed: %s", strerror(errno));
             exit(EXIT_FAILURE);
         }
 
@@ -126,25 +126,24 @@ int main(int argc, char* argv[]) {
     // Сбросить права
     struct passwd* euser_info = getpwnam(config.user_name);
     if( euser_info == NULL ) {
-        perror("getpwnam failed");
+        mylog("getpwnam failed: %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     if( seteuid(euser_info->pw_uid) != 0 ) {
-        perror("seteuid failed");
+        mylog("seteuid failed: %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     pthread_t thread_id;
     if(pipe(conf_pipe) < 0) {
-        perror("pipe() failed");
+        mylog("pipe() failed: %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
     mylog("conf_pipe[0]: %d, conf_pipe[1]: %d\n", conf_pipe[0], conf_pipe[1]);
     int result = pthread_create(&thread_id, NULL, config_reader, &(conf_pipe[0]));
     if( result < 0) {
-        errno = result;
-        perror("pthread_create failed");
+        mylog("pthread_create failed: %s", strerror(result));
         exit(EXIT_FAILURE);
     }
 
@@ -158,7 +157,7 @@ int main(int argc, char* argv[]) {
     sigfillset(&sa_hup.sa_mask);
 
     if(sigaction(SIGHUP, &sa_hup, NULL) != 0) {
-        perror("sigaction failed");
+        mylog("sigaction failed: %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
 

@@ -5,6 +5,11 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "mylog.h"
 
 #define BACKLOG_LENGTH 10
 
@@ -19,7 +24,7 @@ int open_port() {
     struct sockaddr_in sa;
     int socket_fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (socket_fd == -1) {
-        perror("cannot create socket");
+        mylog("cannot create socket: %s", strerror(errno));
         return ERR_SOCKET;
     }
 
@@ -30,14 +35,14 @@ int open_port() {
     sa.sin_addr.s_addr = htonl(INADDR_ANY);
   
     if( bind(socket_fd,(struct sockaddr *)&sa, sizeof sa) == -1 ) {
-        perror("bind failed");
+        mylog("bind failed: %s", strerror(errno));
         close(socket_fd);
         return ERR_BIND;
     }
   
     // Начать принимать соединения на порту
     if (listen(socket_fd, BACKLOG_LENGTH) == -1) {
-        perror("listen failed");
+        mylog("listen failed: %s", strerror(errno));
         close(socket_fd);
         return ERR_LISTEN;
     }

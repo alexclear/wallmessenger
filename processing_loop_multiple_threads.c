@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <glib.h>
+#include <string.h>
 
 #define BACKLOG_LENGTH 10
 
@@ -97,7 +98,7 @@ void *process_client(void* context) {
 
     // Если соединение закрыто - освободить ресурсы
     if (shutdown(((thread_context_t*) context)->client_fd, SHUT_RDWR) == -1) {
-        perror("shutdown failed");
+        mylog("shutdown failed: %s", strerror(errno));
         close(((thread_context_t*) context)->client_fd);
         free(context);
         return NULL;
@@ -114,7 +115,7 @@ int do_processing_loop_multiple_threads(int socket_fd) {
         int connect_fd = accept(socket_fd, NULL, NULL);
   
         if (0 > connect_fd) {
-            perror("accept failed");
+            mylog("accept failed: %s", strerror(errno));
             close(socket_fd);
             return ERR_ACCEPT;
         }
@@ -125,7 +126,7 @@ int do_processing_loop_multiple_threads(int socket_fd) {
         int result = pthread_create(&(context->thread_id), NULL, process_client, context);
         if( result < 0) {
             errno = result;
-            perror("pthread_create failed");
+            mylog("pthread_create failed: %s", strerror(errno));
             return ERR_THREAD;
         }
         // получить блокировку на запись в хэш-таблицу
