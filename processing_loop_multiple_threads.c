@@ -29,6 +29,7 @@ typedef struct {
 } thread_context_t;
 
 GHashTable* threads;
+pthread_rwlock_t threads_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 typedef struct {
     char* message;
@@ -56,11 +57,19 @@ void *process_client(void* context) {
             strncpy(tempstr, buff, result);
             tempstr[result] = 0;
             mylog("[%d] [%d] %d bytes read: %s\n", ((thread_context_t*) context)->thread_id, ((thread_context_t*) context)->client_fd, result, tempstr);
-            // TODO: Получить блокировку на чтение хэш-таблицы
+            // Получить блокировку на чтение хэш-таблицы
+            if(pthread_rwlock_rdlock(&threads_rwlock) != 0) {
+                mylog("Error getting a read lock!\n");
+                exit(EXIT_FAILURE);
+            }
             iter_context_t iter_context;
             iter_context.message = tempstr;
             iter_context.sender = this_context->thread_id;
             g_hash_table_foreach(threads, (GHFunc)threads_iterator, &iter_context);
+            if(pthread_rwlock_unlock(&threads_rwlock) != 0) {
+                mylog("Error unlocking a lock!\n");
+                exit(EXIT_FAILURE);
+            }
             free(tempstr);
         } else {
             switch( result ) {
@@ -68,9 +77,18 @@ void *process_client(void* context) {
                 break;
             default:
                 mylog("Error reading: %d\n", result);
-                // TODO: получить блокировку на запись в хэш-таблицу
-                // TODO: удалить этот поток из хэш-таблицы
+                // получить блокировку на запись в хэш-таблицу
+                if(pthread_rwlock_wrlock(&threads_rwlock) != 0) {
+                    mylog("Error getting a write lock!\n");
+                    exit(EXIT_FAILURE);
+                }
+                // удалить этот поток из хэш-таблицы
+                g_hash_table_remove(threads, &(this_context->thread_id));
                 free(context);
+                if(pthread_rwlock_unlock(&threads_rwlock) != 0) {
+                    mylog("Error unlocking a lock!\n");
+                    exit(EXIT_FAILURE);
+                }
                 return NULL;
             }
             break;
@@ -137,8 +155,16 @@ int do_processing_loop_multiple_threads() {
             perror("pthread_create failed");
             return ERR_THREAD;
         }
-        // TODO: получить блокировку на запись в хэш-таблицу
+        // получить блокировку на запись в хэш-таблицу
+        if(pthread_rwlock_wrlock(&threads_rwlock) != 0) {
+            mylog("Error getting a write lock!\n");
+            exit(EXIT_FAILURE);
+        }
         g_hash_table_insert(threads, &context->thread_id, context);
+        if(pthread_rwlock_unlock(&threads_rwlock) != 0) {
+            mylog("Error unlocking a lock!\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     close(socket_fd);
