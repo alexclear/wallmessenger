@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <errno.h>
+#include <glib.h>
 
 #define BACKLOG_LENGTH 10
 
@@ -27,16 +28,39 @@ typedef struct {
     pthread_t thread_id;
 } thread_context_t;
 
+GHashTable* threads;
+
+typedef struct {
+    char* message;
+    pthread_t sender;
+} iter_context_t;
+
+void threads_iterator(gpointer key, gpointer value, gpointer user_data) {
+    iter_context_t* iter_context = (iter_context_t*) user_data;
+    thread_context_t* thread_context = (thread_context_t*) value;
+    if((*((pthread_t*)key)) == (iter_context->sender ) ) {
+        mylog("Don't send to ourselves!\n");
+    } else {
+        write(thread_context->client_fd, iter_context->message, strlen(iter_context->message));
+    }
+}
+
 void *process_client(void* context) {
     char buff[BUF_LEN];
-    mylog("Creating a thread: %d, id: %d\n", ((thread_context_t*) context)->client_fd, ((thread_context_t*) context)->thread_id);
+    thread_context_t* this_context = (thread_context_t*) context;
+    mylog("Creating a thread: %d, id: %d\n", this_context->client_fd, this_context->thread_id);
     for(;;) {
-        int result = read(((thread_context_t*) context)->client_fd, buff, BUF_LEN);
+        int result = read(this_context->client_fd, buff, BUF_LEN);
         if( result > 0 ) {
             char* tempstr = malloc(result+1);
             strncpy(tempstr, buff, result);
             tempstr[result] = 0;
             mylog("[%d] [%d] %d bytes read: %s\n", ((thread_context_t*) context)->thread_id, ((thread_context_t*) context)->client_fd, result, tempstr);
+            // TODO: Получить блокировку на чтение хэш-таблицы
+            iter_context_t iter_context;
+            iter_context.message = tempstr;
+            iter_context.sender = this_context->thread_id;
+            g_hash_table_foreach(threads, (GHFunc)threads_iterator, &iter_context);
             free(tempstr);
         } else {
             switch( result ) {
@@ -44,6 +68,8 @@ void *process_client(void* context) {
                 break;
             default:
                 mylog("Error reading: %d\n", result);
+                // TODO: получить блокировку на запись в хэш-таблицу
+                // TODO: удалить этот поток из хэш-таблицы
                 free(context);
                 return NULL;
             }
@@ -90,7 +116,9 @@ int do_processing_loop_multiple_threads() {
         close(socket_fd);
         return ERR_LISTEN;
     }
-  
+
+    threads = g_hash_table_new(g_int_hash, g_int_equal);
+
     for (;;) {
         int connect_fd = accept(socket_fd, NULL, NULL);
   
@@ -109,6 +137,8 @@ int do_processing_loop_multiple_threads() {
             perror("pthread_create failed");
             return ERR_THREAD;
         }
+        // TODO: получить блокировку на запись в хэш-таблицу
+        g_hash_table_insert(threads, &context->thread_id, context);
     }
 
     close(socket_fd);

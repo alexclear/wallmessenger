@@ -1,7 +1,7 @@
 all: wallmessenger
 
 wallmessenger: wallmessenger.o config_parser.o mylog.o processing_loop_single.o processing_loop_multiple_threads.o
-	gcc -g processing_loop_multiple_threads.o processing_loop_single.o mylog.o wallmessenger.o config_parser.o -l yaml -lpthread -o wallmessenger
+	gcc -g processing_loop_multiple_threads.o processing_loop_single.o mylog.o wallmessenger.o config_parser.o -l yaml -lpthread `pkg-config --libs glib-2.0` -o wallmessenger
 
 wallmessenger.o: wallmessenger.c typedefs.h mylog.h
 	gcc -g -Wall -Wextra -c wallmessenger.c
@@ -16,7 +16,7 @@ processing_loop_single.o: processing_loop_single.c
 	gcc -g -Wall -Wextra -c processing_loop_single.c
 
 processing_loop_multiple_threads.o: processing_loop_multiple_threads.c
-	gcc -g -Wall -Wextra -c processing_loop_multiple_threads.c
+	gcc -g -Wall -Wextra `pkg-config --cflags glib-2.0` -c processing_loop_multiple_threads.c
 
 clean:
 	rm -rf *.o
