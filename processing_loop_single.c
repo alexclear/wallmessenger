@@ -19,34 +19,7 @@ extern config_t config;
 
 #define BUF_LEN 4096
 
-int do_processing_loop_single() {
-    // Открыть порт
-    struct sockaddr_in sa;
-    int socket_fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (socket_fd == -1) {
-        perror("cannot create socket");
-        return ERR_SOCKET;
-    }
-
-    memset(&sa, 0, sizeof sa);
-
-    sa.sin_family = AF_INET;
-    sa.sin_port = htons(atoi(config.port_number));
-    sa.sin_addr.s_addr = htonl(INADDR_ANY);
-  
-    if( bind(socket_fd,(struct sockaddr *)&sa, sizeof sa) == -1 ) {
-        perror("bind failed");
-        close(socket_fd);
-        return ERR_BIND;
-    }
-  
-    // Начать принимать соединения на порту
-    if (listen(socket_fd, BACKLOG_LENGTH) == -1) {
-        perror("listen failed");
-        close(socket_fd);
-        return ERR_LISTEN;
-    }
-  
+int do_processing_loop_single(int socket_fd) {
     for (;;) {
         int connect_fd = accept(socket_fd, NULL, NULL);
   

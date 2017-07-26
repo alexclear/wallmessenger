@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <signal.h>
 #include <errno.h>
+#include <pwd.h>
 
 #include "typedefs.h"
 
@@ -16,8 +17,9 @@ config_t config;
 unsigned reread_config = FALSE;
 
 extern int config_parser();
-extern int do_processing_loop_single();
-extern int do_processing_loop_multiple_threads();
+extern int open_port();
+extern int do_processing_loop_single(int socket_fd);
+extern int do_processing_loop_multiple_threads(int socket_fd);
 
 int conf_pipe[2];
 
@@ -88,6 +90,23 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    int socket_fd = open_port();
+    if( socket_fd < 0) {
+        exit(EXIT_FAILURE);
+    }
+
+    // Сбросить права
+    struct passwd* euser_info = getpwnam(config.user_name);
+    if( euser_info == NULL ) {
+        perror("getpwnam failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if( seteuid(euser_info->pw_uid) != 0 ) {
+        perror("seteuid failed");
+        exit(EXIT_FAILURE);
+    }
+
     pthread_t thread_id;
     if(pipe(conf_pipe) < 0) {
         perror("pipe() failed");
@@ -115,7 +134,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if(do_processing_loop_multiple_threads() != 0) {
+    if(do_processing_loop_multiple_threads(socket_fd) != 0) {
         exit(EXIT_FAILURE);
     }
 
