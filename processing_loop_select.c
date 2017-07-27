@@ -56,9 +56,9 @@ int do_processing_loop_select(int socket_fd) {
         int retval = select(max_fd, &read_fds, NULL, NULL, &tv);
 
         if (retval < 0) {
-            mylog("select() failed %d: %s\n", retval, strerror(errno));
+            mylog("select() failed %d: %s\n", 1, retval, strerror(errno));
         } else if (retval) {
-            mylog("Data is available, %d\n", retval);
+            mylog("Data is available, %d\n", 0, retval);
             i=fds->len - 1;
             int* remove_list = malloc(fds->len * sizeof(int));
             int remove_list_size = 0;
@@ -70,7 +70,7 @@ int do_processing_loop_select(int socket_fd) {
                         char* tempstr = malloc(result+1);
                         strncpy(tempstr, buff, result);
                         tempstr[result] = 0;
-                        mylog("[%d] %d bytes read: %s\n", client_fd, result, tempstr);
+                        mylog("[%d] %d bytes read: %s\n", 0, client_fd, result, tempstr);
                         int j=0;
                         for(; j<fds->len; j++) {
                             int peer_fd = g_array_index(fds, int, j);
@@ -82,12 +82,12 @@ int do_processing_loop_select(int socket_fd) {
                     } else {
                         switch( result ) {
                         case 0:
-                            mylog("Should close a socket: %d\n", result);
+                            mylog("Should close a socket: %d\n", 0, result);
                             remove_list[remove_list_size] = i;
                             remove_list_size++;
                             break;
                         default:
-                            mylog("Error reading: %d\n", result);
+                            mylog("Error reading: %d\n", 1, result);
                             return ERR_READ;
                         }
                     }
@@ -106,15 +106,15 @@ int do_processing_loop_select(int socket_fd) {
                 g_array_append_val(fds, connect_fd);
   
                 if (0 > connect_fd) {
-                    mylog("accept failed: %s", strerror(errno));
+                    mylog("accept failed: %s", 1, strerror(errno));
                     close(socket_fd);
                     return ERR_ACCEPT;
                 }
             }
         } else {
-            mylog("No data within five seconds: %d\n", retval);
+            mylog("No data within five seconds: %d\n", 0, retval);
         }
-        mylog("Restarting a loop, fds->len: %d\n", fds->len);
+        mylog("Restarting a loop, fds->len: %d\n", 0, fds->len);
     }
 
     close(socket_fd);

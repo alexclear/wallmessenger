@@ -105,7 +105,7 @@ int parse_config() {
                     } else if(strcmp(tempstring, SERVER_TYPE_ASYNC_EPOLL) == 0) {
                         config.server_type = ASYNC_EPOLL;
                     } else {
-                        mylog("Bad server type value\n");
+                        mylog("Bad server type value\n", 1);
                         return -4;
                     }
                     free(tempstring);
@@ -133,9 +133,9 @@ int parse_config() {
         return -3;
     }
 
-    mylog("Port number: %s\n", config.port_number);
-    mylog("User name: %s\n", config.user_name);
-    mylog("Log file path: %s\n", config.log_file_path);
-    mylog("Logging enabled: %d\n", config.logging_enabled);
+    mylog("Port number: %s\n", 0, config.port_number);
+    mylog("User name: %s\n", 0, config.user_name);
+    mylog("Log file path: %s\n", 0, config.log_file_path);
+    mylog("Logging enabled: %d\n", 0, config.logging_enabled);
     return 0;
 }

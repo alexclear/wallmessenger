@@ -38,14 +38,14 @@ int do_processing_loop_single(int socket_fd) {
                 char* tempstr = malloc(result+1);
                 strncpy(tempstr, buff, result);
                 tempstr[result] = 0;
-                mylog("%d bytes read: %s\n", result, tempstr);
+                mylog("%d bytes read: %s\n", 0, result, tempstr);
                 free(tempstr);
             } else {
                 switch( result ) {
                 case 0:
                     break;
                 default:
-                    mylog("Error reading: %d\n", result);
+                    mylog("Error reading: %d\n", 1, result);
                     return ERR_READ;
                 }
                 break;

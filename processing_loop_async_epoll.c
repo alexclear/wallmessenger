@@ -46,14 +46,14 @@ int do_processing_loop_async_epoll(int socket_fd) {
     struct epoll_event event;
     struct epoll_event* events;
     if(epoll_fd < 0) {
-        mylog("epoll_create1() failed: %s\n", strerror(errno));
+        mylog("epoll_create1() failed: %s\n", 1, strerror(errno));
         return ERR_EPOLL_CREATE;
     }
     event.data.fd = socket_fd;
     event.events = EPOLLIN | EPOLLET;
     // Добавляем в epoll наш сокет
     if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, socket_fd, &event)) {
-        mylog("epoll_ctl() failed: %s\n", strerror(errno));
+        mylog("epoll_ctl() failed: %s\n", 1, strerror(errno));
         return ERR_EPOLL_CTL;
     }
     int flags;
@@ -68,22 +68,22 @@ int do_processing_loop_async_epoll(int socket_fd) {
         int retval = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, EPOLL_TIMEOUT_MS);
 
         if (retval < 0) {
-            mylog("epoll_wait() failed %d: %s\n", retval, strerror(errno));
+            mylog("epoll_wait() failed %d: %s\n", 1, retval, strerror(errno));
         } else if (retval) {
-            mylog("Data is available, %d\n", retval);
+            mylog("Data is available, %d\n", 0, retval);
             int i=0;
             for(; i<retval; i++) {
                 if( (events[i].events & EPOLLERR) ||
                       (events[i].events & EPOLLHUP) ||
                       (!(events[i].events & EPOLLIN))) {
-                    mylog("epoll failed\n");
+                    mylog("epoll failed\n", 1);
                     close(events[i].data.fd);
                     continue;
                 }
                 if( events[i].data.fd == socket_fd ) {
                     int connect_fd = accept(socket_fd, NULL, NULL);
                     if (0 > connect_fd) {
-                        mylog("accept failed: %s", strerror(errno));
+                        mylog("accept failed: %s", 1, strerror(errno));
                         close(socket_fd);
                         return ERR_ACCEPT;
                     }
@@ -93,7 +93,7 @@ int do_processing_loop_async_epoll(int socket_fd) {
                     event.events = EPOLLIN;
                     // Добавляем в epoll наш сокет
                     if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, connect_fd, &event)) {
-                        mylog("epoll_ctl() failed: %s\n", strerror(errno));
+                        mylog("epoll_ctl() failed: %s\n", 1, strerror(errno));
                         return ERR_EPOLL_CTL;
                     }
                     int* connect_fd_copy = malloc(sizeof(int));
@@ -105,13 +105,13 @@ int do_processing_loop_async_epoll(int socket_fd) {
                         char* tempstr = malloc(result+1);
                         strncpy(tempstr, buff, result);
                         tempstr[result] = 0;
-                        mylog("[%d] %d bytes read: %s\n", events[i].data.fd, result, tempstr);
+                        mylog("[%d] %d bytes read: %s\n", 0, events[i].data.fd, result, tempstr);
                         int j=0;
                         GList* elem = g_hash_table_get_keys (fds);
                         
                         while (elem != NULL) {
                             int peer_fd = *((int *) elem->data);
-                            mylog("Peer fd: [%d]\n", peer_fd);
+                            mylog("Peer fd: [%d]\n", 0, peer_fd);
                             if(peer_fd != events[i].data.fd) {
                                 write(peer_fd, tempstr, strlen(tempstr));
                             }
@@ -121,21 +121,21 @@ int do_processing_loop_async_epoll(int socket_fd) {
                     } else {
                         switch( result ) {
                         case 0:
-                            mylog("Should close a socket: %d, %d\n", result);
+                            mylog("Should close a socket: %d\n", 0, result);
                             g_hash_table_remove(fds, &(events[i].data.fd));
                             close(events[i].data.fd);
                             break;
                         default:
-                            mylog("Error reading: %d\n", result);
+                            mylog("Error reading: %d\n", 1, result);
                             return ERR_READ;
                         }
                     }
                 }
             }
         } else {
-            mylog("No data within five seconds: %d\n", retval);
+            mylog("No data within five seconds: %d\n", 0, retval);
         }
-        mylog("Restarting a loop, fds->len: %d\n", g_hash_table_size(fds));
+        mylog("Restarting a loop, fds->len: %d\n", 0, g_hash_table_size(fds));
     }
 
     close(socket_fd);

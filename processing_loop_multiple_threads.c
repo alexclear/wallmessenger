@@ -41,7 +41,7 @@ void threads_iterator(gpointer key, gpointer value, gpointer user_data) {
     iter_context_t* iter_context = (iter_context_t*) user_data;
     thread_context_t* thread_context = (thread_context_t*) value;
     if((*((pthread_t*)key)) == (iter_context->sender ) ) {
-        mylog("Don't send to ourselves!\n");
+        mylog("Don't send to ourselves!\n", 0);
     } else {
         write(thread_context->client_fd, iter_context->message, strlen(iter_context->message));
     }
@@ -50,17 +50,17 @@ void threads_iterator(gpointer key, gpointer value, gpointer user_data) {
 void *process_client(void* context) {
     char buff[BUF_LEN];
     thread_context_t* this_context = (thread_context_t*) context;
-    mylog("Creating a thread: %d, id: %d\n", this_context->client_fd, this_context->thread_id);
+    mylog("Creating a thread: %d, id: %d\n", 0, this_context->client_fd, this_context->thread_id);
     for(;;) {
         int result = read(this_context->client_fd, buff, BUF_LEN);
         if( result > 0 ) {
             char* tempstr = malloc(result+1);
             strncpy(tempstr, buff, result);
             tempstr[result] = 0;
-            mylog("[%d] [%d] %d bytes read: %s\n", ((thread_context_t*) context)->thread_id, ((thread_context_t*) context)->client_fd, result, tempstr);
+            mylog("[%d] [%d] %d bytes read: %s\n", 0, ((thread_context_t*) context)->thread_id, ((thread_context_t*) context)->client_fd, result, tempstr);
             // Получить блокировку на чтение хэш-таблицы
             if(pthread_rwlock_rdlock(&threads_rwlock) != 0) {
-                mylog("Error getting a read lock!\n");
+                mylog("Error getting a read lock!\n", 1);
                 exit(EXIT_FAILURE);
             }
             iter_context_t iter_context;
@@ -68,7 +68,7 @@ void *process_client(void* context) {
             iter_context.sender = this_context->thread_id;
             g_hash_table_foreach(threads, (GHFunc)threads_iterator, &iter_context);
             if(pthread_rwlock_unlock(&threads_rwlock) != 0) {
-                mylog("Error unlocking a lock!\n");
+                mylog("Error unlocking a lock!\n", 1);
                 exit(EXIT_FAILURE);
             }
             free(tempstr);
@@ -77,17 +77,17 @@ void *process_client(void* context) {
             case 0:
                 break;
             default:
-                mylog("Error reading: %d\n", result);
+                mylog("Error reading: %d\n", 1, result);
                 // получить блокировку на запись в хэш-таблицу
                 if(pthread_rwlock_wrlock(&threads_rwlock) != 0) {
-                    mylog("Error getting a write lock!\n");
+                    mylog("Error getting a write lock!\n", 1);
                     exit(EXIT_FAILURE);
                 }
                 // удалить этот поток из хэш-таблицы
                 g_hash_table_remove(threads, &(this_context->thread_id));
                 free(context);
                 if(pthread_rwlock_unlock(&threads_rwlock) != 0) {
-                    mylog("Error unlocking a lock!\n");
+                    mylog("Error unlocking a lock!\n", 1);
                     exit(EXIT_FAILURE);
                 }
                 return NULL;
@@ -98,7 +98,7 @@ void *process_client(void* context) {
 
     // Если соединение закрыто - освободить ресурсы
     if (shutdown(((thread_context_t*) context)->client_fd, SHUT_RDWR) == -1) {
-        mylog("shutdown failed: %s", strerror(errno));
+        mylog("shutdown failed: %s", 1, strerror(errno));
         close(((thread_context_t*) context)->client_fd);
         free(context);
         return NULL;
@@ -115,7 +115,7 @@ int do_processing_loop_multiple_threads(int socket_fd) {
         int connect_fd = accept(socket_fd, NULL, NULL);
   
         if (0 > connect_fd) {
-            mylog("accept failed: %s", strerror(errno));
+            mylog("accept failed: %s", 1, strerror(errno));
             close(socket_fd);
             return ERR_ACCEPT;
         }
@@ -126,17 +126,17 @@ int do_processing_loop_multiple_threads(int socket_fd) {
         int result = pthread_create(&(context->thread_id), NULL, process_client, context);
         if( result < 0) {
             errno = result;
-            mylog("pthread_create failed: %s", strerror(errno));
+            mylog("pthread_create failed: %s", 1, strerror(errno));
             return ERR_THREAD;
         }
         // получить блокировку на запись в хэш-таблицу
         if(pthread_rwlock_wrlock(&threads_rwlock) != 0) {
-            mylog("Error getting a write lock!\n");
+            mylog("Error getting a write lock!\n", 1);
             exit(EXIT_FAILURE);
         }
         g_hash_table_insert(threads, &context->thread_id, context);
         if(pthread_rwlock_unlock(&threads_rwlock) != 0) {
-            mylog("Error unlocking a lock!\n");
+            mylog("Error unlocking a lock!\n", 1);
             exit(EXIT_FAILURE);
         }
     }

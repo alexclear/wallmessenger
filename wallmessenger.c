@@ -24,6 +24,7 @@ extern int do_processing_loop_multiple_threads(int socket_fd);
 extern int do_processing_loop_select(int socket_fd);
 extern int do_processing_loop_async_select(int socket_fd);
 extern int do_processing_loop_async_epoll(int socket_fd);
+extern int reopen;
 
 int start_in_foreground = FALSE;
 int conf_pipe[2];
@@ -37,24 +38,25 @@ void sighup_handler(int signum) {
     if(i == -1) {
         perror("Write failed");
     }
+    reopen = 1;
     fprintf(stderr, "Leaving the handler: %d, conf_pipe[1]: %d\n", i, conf_pipe[1]);
 }
 
 void* config_reader(void* context) {
     int readfd = *((int*) context);
-    mylog("readfd: %d\n", readfd);
+    mylog("readfd: %d\n", 0, readfd);
     if(parse_config() != 0) {
         exit(EXIT_FAILURE);
     }
     for(;;) {
         char buf;
         read(readfd, &buf, 1);
-        mylog("Read from readfd!\n");
+        mylog("Read from readfd!\n", 0);
         if(reread_config == TRUE) {
             if(parse_config() != 0) {
-                mylog("Parsing failed!\n");
+                mylog("Parsing failed!\n", 1);
             } else {
-                mylog("Config replaced!\n");
+                mylog("Config replaced!\n", 0);
             }
             reread_config = FALSE;
         }
@@ -98,7 +100,7 @@ int main(int argc, char* argv[]) {
         // Сделать fork
         pid_t pid = fork();
         if(pid < 0) {
-            mylog("fork failed: %s", strerror(errno));
+            mylog("fork failed: %s", 1, strerror(errno));
             exit(EXIT_FAILURE);
         }
 
@@ -129,24 +131,24 @@ int main(int argc, char* argv[]) {
     // Сбросить права
     struct passwd* euser_info = getpwnam(config.user_name);
     if( euser_info == NULL ) {
-        mylog("getpwnam failed: %s", strerror(errno));
+        mylog("getpwnam failed: %s", 1, strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     if( seteuid(euser_info->pw_uid) != 0 ) {
-        mylog("seteuid failed: %s", strerror(errno));
+        mylog("seteuid failed: %s", 1, strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     pthread_t thread_id;
     if(pipe(conf_pipe) < 0) {
-        mylog("pipe() failed: %s", strerror(errno));
+        mylog("pipe() failed: %s", 1, strerror(errno));
         exit(EXIT_FAILURE);
     }
-    mylog("conf_pipe[0]: %d, conf_pipe[1]: %d\n", conf_pipe[0], conf_pipe[1]);
+    mylog("conf_pipe[0]: %d, conf_pipe[1]: %d\n", 0, conf_pipe[0], conf_pipe[1]);
     int result = pthread_create(&thread_id, NULL, config_reader, &(conf_pipe[0]));
     if( result < 0) {
-        mylog("pthread_create failed: %s", strerror(result));
+        mylog("pthread_create failed: %s", 1, strerror(result));
         exit(EXIT_FAILURE);
     }
 
@@ -160,7 +162,7 @@ int main(int argc, char* argv[]) {
     sigfillset(&sa_hup.sa_mask);
 
     if(sigaction(SIGHUP, &sa_hup, NULL) != 0) {
-        mylog("sigaction failed: %s", strerror(errno));
+        mylog("sigaction failed: %s", 1, strerror(errno));
         exit(EXIT_FAILURE);
     }
 
