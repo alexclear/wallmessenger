@@ -28,11 +28,11 @@ GArray* fds;
 
 int do_processing_loop_select(int socket_fd) {
     fd_set read_fds;
-    int number_fds = 0;
+    int max_fd = 0;
     struct timeval tv;
     FD_ZERO(&read_fds);
     FD_SET(socket_fd, &read_fds);
-    number_fds++;
+    max_fd = socket_fd + 1;
     fds = g_array_sized_new (FALSE, TRUE, sizeof(int), 1024);
     char buff[BUF_LEN];
 
@@ -42,29 +42,26 @@ int do_processing_loop_select(int socket_fd) {
     for (;;) {
         tv.tv_sec = 5;
         tv.tv_usec = 0;
-        int number_fds = 0;
         FD_ZERO(&read_fds);
         FD_SET(socket_fd, &read_fds);
-        number_fds++;
-        int retval = select(number_fds, &read_fds, NULL, NULL, &tv);
-
-        if (retval == -1) {
-            mylog("select() failed: %s\n", strerror(errno));
-        } else if (retval) {
-            mylog("Data is available\n");
-            if( FD_ISSET(socket_fd, &read_fds) ) {
-                int connect_fd = accept(socket_fd, NULL, NULL);
-                FD_SET(connect_fd, &read_fds);
-                number_fds++;
-                g_array_append_val(fds, connect_fd);
-  
-                if (0 > connect_fd) {
-                    mylog("accept failed: %s", strerror(errno));
-                    close(socket_fd);
-                    return ERR_ACCEPT;
-                }
+        max_fd = socket_fd + 1;
+        int i=fds->len - 1;
+        for(; i>=0; i--) {
+            int client_fd = g_array_index(fds, int, i);
+            FD_SET(client_fd, &read_fds);
+            if((client_fd + 1) > max_fd) {
+                max_fd = client_fd + 1;
             }
-            int i=0;
+        }
+        int retval = select(max_fd, &read_fds, NULL, NULL, &tv);
+
+        if (retval < 0) {
+            mylog("select() failed %d: %s\n", retval, strerror(errno));
+        } else if (retval) {
+            mylog("Data is available, %d\n", retval);
+            i=0;
+            int* remove_list = malloc(fds->len * sizeof(int));
+            int remove_list_size = 0;
             for(; i<fds->len; i++) {
                 int client_fd = g_array_index(fds, int, i);
                 if( FD_ISSET(client_fd, &read_fds) ) {
@@ -78,6 +75,9 @@ int do_processing_loop_select(int socket_fd) {
                     } else {
                         switch( result ) {
                         case 0:
+                            mylog("Should close a socket: %d\n", result);
+                            remove_list[remove_list_size] = i;
+                            remove_list_size++;
                             break;
                         default:
                             mylog("Error reading: %d\n", result);
@@ -86,9 +86,28 @@ int do_processing_loop_select(int socket_fd) {
                     }
                 }
             }
+            for(i=0; i<remove_list_size; i++) {
+                g_array_remove_index(fds, remove_list[i]);
+            }
+            free(remove_list);
+            if( FD_ISSET(socket_fd, &read_fds) ) {
+                int connect_fd = accept(socket_fd, NULL, NULL);
+                FD_SET(connect_fd, &read_fds);
+                if((connect_fd + 1) > max_fd) {
+                    max_fd = connect_fd + 1;
+                }
+                g_array_append_val(fds, connect_fd);
+  
+                if (0 > connect_fd) {
+                    mylog("accept failed: %s", strerror(errno));
+                    close(socket_fd);
+                    return ERR_ACCEPT;
+                }
+            }
         } else {
-            mylog("No data within five seconds\n");
+            mylog("No data within five seconds: %d\n", retval);
         }
+        mylog("Restarting a loop, fds->len: %d\n", fds->len);
     }
 
     close(socket_fd);
