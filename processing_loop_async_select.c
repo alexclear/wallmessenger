@@ -61,10 +61,10 @@ int do_processing_loop_async_select(int socket_fd) {
             mylog("select() failed %d: %s\n", retval, strerror(errno));
         } else if (retval) {
             mylog("Data is available, %d\n", retval);
-            i=0;
             int* remove_list = malloc(fds->len * sizeof(int));
             int remove_list_size = 0;
-            for(; i<fds->len; i++) {
+            i=fds->len - 1;
+            for(; i>=0; i--) {
                 int client_fd = g_array_index(fds, int, i);
                 if( FD_ISSET(client_fd, &read_fds) ) {
                     int result = read(client_fd, buff, BUF_LEN);
