@@ -14,6 +14,7 @@
 #define SERVER_TYPE_SYNC_SELECT "sync_select"
 #define SERVER_TYPE_ASYNC_SELECT "async_select"
 #define SERVER_TYPE_SYNC_THREADS "sync_threads"
+#define SERVER_TYPE_ASYNC_EPOLL "async_epoll"
 #define TRUE 1
 #define FALSE 0
 
@@ -101,6 +102,8 @@ int parse_config() {
                         config.server_type = SYNC_SELECT;
                     } else if(strcmp(tempstring, SERVER_TYPE_ASYNC_SELECT) == 0) {
                         config.server_type = ASYNC_SELECT;
+                    } else if(strcmp(tempstring, SERVER_TYPE_ASYNC_EPOLL) == 0) {
+                        config.server_type = ASYNC_EPOLL;
                     } else {
                         mylog("Bad server type value\n");
                         return -4;

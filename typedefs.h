@@ -13,7 +13,8 @@ typedef enum {
 typedef enum {
     SYNC_THREADS,
     SYNC_SELECT,
-    ASYNC_SELECT
+    ASYNC_SELECT,
+    ASYNC_EPOLL
 } server_type_t;
 
 typedef struct {

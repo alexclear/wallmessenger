@@ -23,6 +23,7 @@ extern int do_processing_loop_single(int socket_fd);
 extern int do_processing_loop_multiple_threads(int socket_fd);
 extern int do_processing_loop_select(int socket_fd);
 extern int do_processing_loop_async_select(int socket_fd);
+extern int do_processing_loop_async_epoll(int socket_fd);
 
 int start_in_foreground = FALSE;
 int conf_pipe[2];
@@ -163,18 +164,21 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if(config.server_type == SYNC_THREADS) {
-        if(do_processing_loop_multiple_threads(socket_fd) != 0) {
-            exit(EXIT_FAILURE);
-        }
-    } else if(config.server_type == ASYNC_SELECT) {
-        if(do_processing_loop_async_select(socket_fd) != 0) {
-            exit(EXIT_FAILURE);
-        }
-    } else {
-        if(do_processing_loop_select(socket_fd) != 0) {
-            exit(EXIT_FAILURE);
-        }
+    switch(config.server_type) {
+    case SYNC_THREADS:
+        result = do_processing_loop_multiple_threads(socket_fd);
+        break;
+    case ASYNC_SELECT:
+        result = do_processing_loop_async_select(socket_fd);
+        break;
+    case ASYNC_EPOLL:
+        result = do_processing_loop_async_epoll(socket_fd);
+        break;
+    default:
+        result = do_processing_loop_select(socket_fd);
+    }
+    if(result != 0) {
+        exit(EXIT_FAILURE);
     }
 
     exit(EXIT_SUCCESS);
