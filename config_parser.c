@@ -11,8 +11,9 @@
 #define LOG_FILE_PATH "log_file_path"
 #define SERVER_TYPE "server_type"
 #define LOGGING_YES "Yes"
-#define SERVER_TYPE_ASYNC "async"
-#define SERVER_TYPE_SYNC "sync"
+#define SERVER_TYPE_SYNC_SELECT "sync_select"
+#define SERVER_TYPE_ASYNC_SELECT "async_select"
+#define SERVER_TYPE_SYNC_THREADS "sync_threads"
 #define TRUE 1
 #define FALSE 0
 
@@ -94,10 +95,12 @@ int parse_config() {
                     char* tempstring = malloc(event.data.scalar.length + 1);
                     strncpy(tempstring, event.data.scalar.value, event.data.scalar.length);
                     tempstring[event.data.scalar.length] = NULL;
-                    if(strcmp(tempstring, SERVER_TYPE_SYNC) == 0) {
-                        config.server_type = SYNC;
-                    } else if(strcmp(tempstring, SERVER_TYPE_ASYNC) == 0) {
-                        config.server_type = ASYNC;
+                    if(strcmp(tempstring, SERVER_TYPE_SYNC_THREADS) == 0) {
+                        config.server_type = SYNC_THREADS;
+                    } else if(strcmp(tempstring, SERVER_TYPE_SYNC_SELECT) == 0) {
+                        config.server_type = SYNC_SELECT;
+                    } else if(strcmp(tempstring, SERVER_TYPE_ASYNC_SELECT) == 0) {
+                        config.server_type = ASYNC_SELECT;
                     } else {
                         mylog("Bad server type value\n");
                         return -4;

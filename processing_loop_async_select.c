@@ -10,6 +10,7 @@
 #include <glib.h>
 #include <string.h>
 #include <sys/select.h>
+#include <fcntl.h>
 
 #define BACKLOG_LENGTH 10
 
@@ -26,11 +27,12 @@ GArray* fds;
 
 #define BUF_LEN 4096
 
-int do_processing_loop_select(int socket_fd) {
+int do_processing_loop_async_select(int socket_fd) {
     fd_set read_fds;
     int max_fd = 0;
     struct timeval tv;
     FD_ZERO(&read_fds);
+    fcntl(socket_fd, F_SETFL, O_NONBLOCK);
     FD_SET(socket_fd, &read_fds);
     max_fd = socket_fd + 1;
     fds = g_array_sized_new (FALSE, TRUE, sizeof(int), 1024);
@@ -98,18 +100,19 @@ int do_processing_loop_select(int socket_fd) {
             }
             free(remove_list);
             if( FD_ISSET(socket_fd, &read_fds) ) {
+                //sleep(40);
                 int connect_fd = accept(socket_fd, NULL, NULL);
-                FD_SET(connect_fd, &read_fds);
-                if((connect_fd + 1) > max_fd) {
-                    max_fd = connect_fd + 1;
-                }
-                g_array_append_val(fds, connect_fd);
-  
                 if (0 > connect_fd) {
                     mylog("accept failed: %s", strerror(errno));
                     close(socket_fd);
                     return ERR_ACCEPT;
                 }
+                fcntl(connect_fd, F_SETFL, O_NONBLOCK);
+                FD_SET(connect_fd, &read_fds);
+                if((connect_fd + 1) > max_fd) {
+                    max_fd = connect_fd + 1;
+                }
+                g_array_append_val(fds, connect_fd);
             }
         } else {
             mylog("No data within five seconds: %d\n", retval);

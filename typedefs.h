@@ -11,8 +11,9 @@ typedef enum {
 } parser_state_t;
 
 typedef enum {
-    SYNC,
-    ASYNC
+    SYNC_THREADS,
+    SYNC_SELECT,
+    ASYNC_SELECT
 } server_type_t;
 
 typedef struct {
