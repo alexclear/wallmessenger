@@ -41,7 +41,7 @@ void threads_iterator(gpointer key, gpointer value, gpointer user_data) {
     iter_context_t* iter_context = (iter_context_t*) user_data;
     thread_context_t* thread_context = (thread_context_t*) value;
     if((*((pthread_t*)key)) == (iter_context->sender ) ) {
-        mylog("Don't send to ourselves!\n", 0);
+        //mylog("Don't send to ourselves!\n", 0);
     } else {
         write(thread_context->client_fd, iter_context->message, strlen(iter_context->message));
     }
@@ -57,7 +57,7 @@ void *process_client(void* context) {
             char* tempstr = malloc(result+1);
             strncpy(tempstr, buff, result);
             tempstr[result] = 0;
-            mylog("[%d] [%d] %d bytes read: %s\n", 0, ((thread_context_t*) context)->thread_id, ((thread_context_t*) context)->client_fd, result, tempstr);
+            //mylog("[%d] [%d] %d bytes read: %s\n", 0, ((thread_context_t*) context)->thread_id, ((thread_context_t*) context)->client_fd, result, tempstr);
             // Получить блокировку на чтение хэш-таблицы
             if(pthread_rwlock_rdlock(&threads_rwlock) != 0) {
                 mylog("Error getting a read lock!\n", 1);
@@ -77,7 +77,7 @@ void *process_client(void* context) {
             case 0:
                 break;
             default:
-                mylog("Error reading: %d\n", 1, result);
+                mylog("Error reading: %d, %s\n", 1, result, strerror(errno));
                 // получить блокировку на запись в хэш-таблицу
                 if(pthread_rwlock_wrlock(&threads_rwlock) != 0) {
                     mylog("Error getting a write lock!\n", 1);

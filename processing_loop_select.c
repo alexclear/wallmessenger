@@ -58,7 +58,7 @@ int do_processing_loop_select(int socket_fd) {
         if (retval < 0) {
             mylog("select() failed %d: %s\n", 1, retval, strerror(errno));
         } else if (retval) {
-            mylog("Data is available, %d\n", 0, retval);
+            //mylog("Data is available, %d\n", 0, retval);
             i=fds->len - 1;
             int* remove_list = malloc(fds->len * sizeof(int));
             int remove_list_size = 0;
@@ -70,7 +70,7 @@ int do_processing_loop_select(int socket_fd) {
                         char* tempstr = malloc(result+1);
                         strncpy(tempstr, buff, result);
                         tempstr[result] = 0;
-                        mylog("[%d] %d bytes read: %s\n", 0, client_fd, result, tempstr);
+                        //mylog("[%d] %d bytes read: %s\n", 0, client_fd, result, tempstr);
                         int j=0;
                         for(; j<fds->len; j++) {
                             int peer_fd = g_array_index(fds, int, j);
@@ -114,7 +114,7 @@ int do_processing_loop_select(int socket_fd) {
         } else {
             mylog("No data within five seconds: %d\n", 0, retval);
         }
-        mylog("Restarting a loop, fds->len: %d\n", 0, fds->len);
+        //mylog("Restarting a loop, fds->len: %d\n", 0, fds->len);
     }
 
     close(socket_fd);
