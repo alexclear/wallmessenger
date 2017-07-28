@@ -70,7 +70,7 @@ int do_processing_loop_async_epoll(int socket_fd) {
         if (retval < 0) {
             mylog("epoll_wait() failed %d: %s\n", 1, retval, strerror(errno));
         } else if (retval) {
-            mylog("Data is available, %d\n", 0, retval);
+            //mylog("Data is available, %d\n", 0, retval);
             int i=0;
             for(; i<retval; i++) {
                 if( (events[i].events & EPOLLERR) ||
@@ -105,18 +105,20 @@ int do_processing_loop_async_epoll(int socket_fd) {
                         char* tempstr = malloc(result+1);
                         strncpy(tempstr, buff, result);
                         tempstr[result] = 0;
-                        mylog("[%d] %d bytes read: %s\n", 0, events[i].data.fd, result, tempstr);
+                        //mylog("[%d] %d bytes read: %s\n", 0, events[i].data.fd, result, tempstr);
                         int j=0;
                         GList* elem = g_hash_table_get_keys (fds);
+                        GList* first = elem;
                         
                         while (elem != NULL) {
                             int peer_fd = *((int *) elem->data);
-                            mylog("Peer fd: [%d]\n", 0, peer_fd);
+                            //mylog("Peer fd: [%d]\n", 0, peer_fd);
                             if(peer_fd != events[i].data.fd) {
                                 write(peer_fd, tempstr, strlen(tempstr));
                             }
                             elem = elem->next;
                         }
+                        g_list_free(first);
                         free(tempstr);
                     } else {
                         switch( result ) {
@@ -135,7 +137,7 @@ int do_processing_loop_async_epoll(int socket_fd) {
         } else {
             mylog("No data within five seconds: %d\n", 0, retval);
         }
-        mylog("Restarting a loop, fds->len: %d\n", 0, g_hash_table_size(fds));
+        //mylog("Restarting a loop, fds->len: %d\n", 0, g_hash_table_size(fds));
     }
 
     close(socket_fd);
